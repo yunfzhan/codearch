@@ -81,5 +81,11 @@ func main(){
 		return
 	}
 	fmt.Printf("option: %v, input: %v, output: %v\n", gargs.flag, gargs.infile, gargs.outfile);
-	
+	if gargs.flag=="c" {
+		engine := SearchConst{
+			gargs.infile,
+			gargs.outfile,
+		}
+		engine.Search()
+	}
 }
