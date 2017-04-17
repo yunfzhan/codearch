@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"fmt"
 	"os"
 	"strings"
@@ -12,18 +13,22 @@ func printHelp(){
 	fmt.Println("*                   CWScan v1.0 Help                         *")
 	fmt.Println("**************************************************************")
 	fmt.Println("")
-	fmt.Println("cwscan -[options: d|f|c] [arg] dotfile")
-	fmt.Println("\n")
-	fmt.Println("d\t\t\targ is a folder name.")
-	fmt.Println("f\t\t\targ is a file name.")
-	fmt.Println("c\t\t\targ is a constant or function name.")
-	fmt.Println("output is generated .dot file name.")
+	fmt.Println("cwscan -c -m <VC project or makefile.>")
+	fmt.Println("List files not in project and clean up.")
+	fmt.Println("")
+	fmt.Println("cwscan -m <VC project or makefile> -f <file name to scan>")
+	fmt.Println("Create topology of included files of a file.")
+}
+
+type Option struct{
+	flag string
+	param string
 }
 
 type GArguments struct{
-	flag string		// d|f|c - 区分输入的名称类型
-	infile string	//根据上面的类型，这个可以是目录，文件名或函数与常量
-	outfile string	//要生成的.dot文件名
+	clean bool
+	project Option
+	file Option
 }
 
 var gargs GArguments
@@ -31,20 +36,35 @@ var gargs GArguments
 
 func processCmdLine(arg string, flag bool) error {
 	if flag {
-		if arg!="d" && arg!="f" && arg!="c" {
+		switch arg {
+		case "c":
+			gargs.clean=true
+		case "f":
+			gargs.file.flag="f"
+		case "m":
+			gargs.project.flag="m"
+		default:
 			return errors.New("Invalid option: "+arg)
 		}
-		gargs.flag=arg
 	} else {
-		if gargs.infile=="" {
-			gargs.infile=arg
-		} else if gargs.outfile==""{ 
-			gargs.outfile=arg
+		if gargs.file.flag=="f" && gargs.file.param=="" {
+			gargs.file.param=arg
+		} else if gargs.project.flag=="m" && gargs.project.param=="" {
+			gargs.project.param=arg
 		} else {
-			return errors.New("Unknown argument!")
+			return errors.New("Unknown arguments: "+arg)
 		}
 	}
 	return nil
+}
+
+func parseMakefile(make string) {
+	if strings.HasSuffix(make, ".vcxproj") || strings.HasSuffix(make, ".vcproj") {
+		// VC project
+		if 	err:=buildVCProject(make); err!=nil {
+			log.Fatal(err)
+		}
+	}
 }
 
 func main(){
@@ -65,27 +85,22 @@ func main(){
 		err:=processCmdLine(arg,flag)
 		if err!=nil {
 			// meet errors
-			fmt.Println(err)
-			return
+			log.Fatal(err)
 		}
 	}
 
-	if gargs.flag=="" {
-		fmt.Println("Missing option name!")
-		return
-	} else if gargs.infile=="" {
-		fmt.Println("Missing input name!")
-		return
-	} else if gargs.outfile=="" {
-		fmt.Println("Missing .dot name!")
-		return
+	if gargs.project.flag!="m" && gargs.project.param=="" {
+		log.Fatal("Need a project name.")
 	}
-	fmt.Printf("option: %v, input: %v, output: %v\n", gargs.flag, gargs.infile, gargs.outfile);
-	if gargs.flag=="c" {
-		engine := SearchConst{
-			gargs.infile,
-			gargs.outfile,
-		}
-		engine.Search()
+
+	parseMakefile(gargs.project.param)
+
+	if gargs.clean {
+		//Clean up abundant files of the project
+		
+	} else if gargs.file.flag=="f" && gargs.file.param!=""{
+
+	} else {
+		log.Fatal("Missing file name to scan.")
 	}
 }
