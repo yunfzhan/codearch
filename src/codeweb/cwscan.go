@@ -7,7 +7,10 @@ import (
 	"strings"
 	"errors"
 )
-
+/*******************************************************************************
+*
+*            帮助函数
+*******************************************************************************/
 func printHelp(){
 	fmt.Println("**************************************************************")
 	fmt.Println("*                   CWScan v1.0 Help                         *")
@@ -20,6 +23,10 @@ func printHelp(){
 	fmt.Println("Create topology of included files of a file.")
 }
 
+/*******************************************************************************
+*
+*            定义数据结构和全局变量
+*******************************************************************************/
 type Option struct{
 	flag string
 	param string
@@ -31,9 +38,18 @@ type GArguments struct{
 	file Option
 }
 
+type FilesArch struct{
+	paths []string
+	files [][]string
+}
+
 var gargs GArguments
 //var argMap map[string][]string
 
+/*******************************************************************************
+*
+*            实现函数定义
+*******************************************************************************/
 func processCmdLine(arg string, flag bool) error {
 	if flag {
 		switch arg {
