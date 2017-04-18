@@ -6,47 +6,50 @@ import (
 	//"bufio"
 	"encoding/xml"
 	"io/ioutil"
-	"bytes"
+	//"bytes"
 )
 
+type VCProject struct {
+	ItemDefinitionGroup []ItemDefinitionGroup
+	ItemGroup ItemGroup
+}
+
+type ItemDefinitionGroup struct {
+	Condition string `xml:",attr"`
+	ClCompile ClCompile
+}
+
+type ClCompile struct {
+	//Definitions string `xml:"PreprocessorDefinitions,chardata"`
+	Directories string `xml:"AdditionalIncludeDirectories, chardata"`
+}
+
+type ItemGroup struct {
+	Cpp []Compile `xml:"ClCompile"`
+	Header []Include `xml:"ClInclude"`
+}
+
+type Compile struct {
+	Include string `xml:"Include,attr"`
+}
+
+type Include struct {
+	Include string `xml:"Include,attr"`
+}
+
 func buildVCProject(fname string) error {
-	fmt.Println(fname)
 	// 从文件读取，如可以如下：
     content, err := ioutil.ReadFile(fname)
 	if err!=nil {
 		return err
 	}
-    decoder := xml.NewDecoder(bytes.NewBuffer(content))
-    //decoder := xml.NewDecoder(inputReader)
-	for t, err := decoder.Token(); err == nil; t, err = decoder.Token() {
-        switch token := t.(type) {
-        // 处理元素开始（标签）
-        case xml.StartElement:
-            name := token.Name.Local
-            fmt.Printf("Token name: %s\n", name)
-            for _, attr := range token.Attr {
-                attrName := attr.Name.Local
-                attrValue := attr.Value
-                fmt.Printf("An attribute is: %s %s\n", attrName, attrValue)
-            }
-        // 处理元素结束（标签）
-        case xml.EndElement:
-            fmt.Printf("Token of '%s' end\n", token.Name.Local)
-        // 处理字符数据（这里就是元素的文本）
-        case xml.CharData:
-            content := string([]byte(token))
-            fmt.Printf("This is the content: %v\n", content)
-        default:
-            fmt.Println("Default Token")
-        }
-    }
-	//var lines []string
-	//scanner:=bufio.NewScanner(f)
-	//for scanner.Scan() {
-	//	lines=append(lines, scanner.Text())
-	//}
-	//if scanner.Err()!=nil {
-	//	return scanner.Err()
-	//}
+    var result VCProject
+	err=xml.Unmarshal(content, &result)
+	if err!=nil {
+		return err
+	}
+
+	fmt.Printf("item definition: %v\n", result.ItemDefinitionGroup)
+	//fmt.Printf("files: %v\n", result.ItemGroup)
 	return nil
 }
