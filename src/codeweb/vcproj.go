@@ -20,8 +20,7 @@ type ItemDefinitionGroup struct {
 }
 
 type ClCompile struct {
-	//Definitions string `xml:"PreprocessorDefinitions,chardata"`
-	Directories string `xml:"AdditionalIncludeDirectories, chardata"`
+	Contents string `xml:",innerxml"`
 }
 
 type ItemGroup struct {
