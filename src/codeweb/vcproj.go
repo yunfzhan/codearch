@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	//"reflect"
+	"errors"
 	"strings"
 	"encoding/xml"
 	"io/ioutil"
@@ -36,18 +37,6 @@ type Include struct {
 	Include string `xml:"Include,attr"`
 }
 
-/*******************************************************************************
-*
-*           定义错误类型 
-*******************************************************************************/
-type TagFound struct {
-	Content string
-}
-
-func (e *TagFound) Error() string{
-	return e.Content;
-}
-
 /*
 	Unmarshal方法无法解析出路径，所以使用原始的方法来解析出路径并存储到
 	结果当中。
@@ -73,7 +62,7 @@ func parseIncludePaths(project *VCProject) {
 				if bMetIncludes {
 					content := string([]byte(token))
 					//fmt.Printf("This is the content: %v\n", content)
-					e=&TagFound{content}
+					e=errors.New("Tag found")
 					project.ItemDefinitionGroup[i].ClCompile=content
 					bMetIncludes=false
 				}
