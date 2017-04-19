@@ -1,14 +1,18 @@
 package main
 
 import (
-	"fmt"
-	//"os"
-	//"bufio"
+	//"fmt"
+	"reflect"
+	"strings"
 	"encoding/xml"
 	"io/ioutil"
 	//"bytes"
 )
 
+/*******************************************************************************
+*
+*           XML数据结构 
+*******************************************************************************/
 type VCProject struct {
 	ItemDefinitionGroup []ItemDefinitionGroup
 	ItemGroup ItemGroup
@@ -16,11 +20,7 @@ type VCProject struct {
 
 type ItemDefinitionGroup struct {
 	Condition string `xml:",attr"`
-	ClCompile ClCompile
-}
-
-type ClCompile struct {
-	Contents string `xml:",innerxml"`
+	ClCompile string `xml:",innerxml"`
 }
 
 type ItemGroup struct {
@@ -36,6 +36,18 @@ type Include struct {
 	Include string `xml:"Include,attr"`
 }
 
+/*******************************************************************************
+*
+*           定义错误类型 
+*******************************************************************************/
+type TagFound struct {
+	Content string
+}
+
+func (e *TagFound) Error() string{
+	return e.Content;
+}
+
 func buildVCProject(fname string) error {
 	// 从文件读取，如可以如下：
     content, err := ioutil.ReadFile(fname)
@@ -48,7 +60,42 @@ func buildVCProject(fname string) error {
 		return err
 	}
 
-	fmt.Printf("item definition: %v\n", result.ItemDefinitionGroup)
-	//fmt.Printf("files: %v\n", result.ItemGroup)
+	for i:=0; i<len(result.ItemDefinitionGroup); i++ {
+		/*
+			Unmarshal方法无法解析出路径，所以使用原始的方法来解析出路径并存储到
+			结果当中。
+		*/
+		inputReader:=strings.NewReader(result.ItemDefinitionGroup[i].ClCompile)
+		decoder:=xml.NewDecoder(inputReader)
+		bMetIncludes:=false
+		for t,e:=decoder.Token(); err==nil && e==nil; t, e=decoder.Token(){
+			switch token := t.(type) {
+				// 处理元素开始（标签）
+			case xml.StartElement:
+				name := token.Name.Local
+				if name=="AdditionalIncludeDirectories" {
+					bMetIncludes=true
+				}
+				// 处理元素结束（标签）
+			case xml.EndElement:
+				//fmt.Printf("Token of '%s' end\n", token.Name.Local)
+				// 处理字符数据（这里就是元素的文本）
+			case xml.CharData:
+				if bMetIncludes {
+					content := string([]byte(token))
+					//fmt.Printf("This is the content: %v\n", content)
+					err=&TagFound{content}
+					bMetIncludes=false
+				}
+			}
+		}
+		if reflect.TypeOf(err).String()=="*main.TagFound" {
+			result.ItemDefinitionGroup[i].ClCompile=err.Error()
+			err=nil
+			//fmt.Println(result.ItemDefinitionGroup[i].ClCompile)
+		}
+	}
+	//fmt.Printf("item definition: %v\n", result.ItemDefinitionGroup[0].ClCompile)
+	//fmt.Printf("files: %v\n", result.ItemDefinitionGroup)
 	return nil
 }
