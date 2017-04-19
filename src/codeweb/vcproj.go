@@ -1,8 +1,8 @@
 package main
 
 import (
-	//"fmt"
-	"reflect"
+	"fmt"
+	//"reflect"
 	"strings"
 	"encoding/xml"
 	"io/ioutil"
@@ -48,27 +48,16 @@ func (e *TagFound) Error() string{
 	return e.Content;
 }
 
-func buildVCProject(fname string) error {
-	// 从文件读取，如可以如下：
-    content, err := ioutil.ReadFile(fname)
-	if err!=nil {
-		return err
-	}
-    var result VCProject
-	err=xml.Unmarshal(content, &result)
-	if err!=nil {
-		return err
-	}
-
-	for i:=0; i<len(result.ItemDefinitionGroup); i++ {
-		/*
-			Unmarshal方法无法解析出路径，所以使用原始的方法来解析出路径并存储到
-			结果当中。
-		*/
-		inputReader:=strings.NewReader(result.ItemDefinitionGroup[i].ClCompile)
+/*
+	Unmarshal方法无法解析出路径，所以使用原始的方法来解析出路径并存储到
+	结果当中。
+*/
+func parseIncludePaths(project *VCProject) {
+	for i:=0; i<len(project.ItemDefinitionGroup); i++ {
+		inputReader:=strings.NewReader(project.ItemDefinitionGroup[i].ClCompile)
 		decoder:=xml.NewDecoder(inputReader)
 		bMetIncludes:=false
-		for t,e:=decoder.Token(); err==nil && e==nil; t, e=decoder.Token(){
+		for t,e:=decoder.Token(); e==nil; t, e=decoder.Token(){
 			switch token := t.(type) {
 				// 处理元素开始（标签）
 			case xml.StartElement:
@@ -84,18 +73,29 @@ func buildVCProject(fname string) error {
 				if bMetIncludes {
 					content := string([]byte(token))
 					//fmt.Printf("This is the content: %v\n", content)
-					err=&TagFound{content}
+					e=&TagFound{content}
+					project.ItemDefinitionGroup[i].ClCompile=content
 					bMetIncludes=false
 				}
 			}
 		}
-		if reflect.TypeOf(err).String()=="*main.TagFound" {
-			result.ItemDefinitionGroup[i].ClCompile=err.Error()
-			err=nil
-			//fmt.Println(result.ItemDefinitionGroup[i].ClCompile)
-		}
 	}
+}
+
+func buildVCProject(fname string) error {
+	// 从文件读取，如可以如下：
+	content, err := ioutil.ReadFile(fname)
+	if err!=nil {
+		return err
+	}
+	var result VCProject
+	err=xml.Unmarshal(content, &result)
+	if err!=nil {
+		return err
+	}
+
+	parseIncludePaths(&result)
 	//fmt.Printf("item definition: %v\n", result.ItemDefinitionGroup[0].ClCompile)
-	//fmt.Printf("files: %v\n", result.ItemDefinitionGroup)
+	fmt.Printf("files: %v\n", result)
 	return nil
 }
