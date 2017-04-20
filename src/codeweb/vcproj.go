@@ -8,6 +8,7 @@ import (
 	"encoding/xml"
 	"io/ioutil"
 	//"bytes"
+    "sync"
 )
 
 /*******************************************************************************
@@ -71,6 +72,16 @@ func parseIncludePaths(project *VCProject) {
 	}
 }
 
+func buildSearchPaths(wg sync.WaitGroup, paths []ItemDefinitionGroup) {
+    defer wg.Done()
+
+}
+
+func buildSearchFiles(wg sync.WaitGroup, files ItemGroup) {
+    defer wg.Done()
+
+}
+
 func buildVCProject(fname string) error {
 	// 从文件读取，如可以如下：
 	content, err := ioutil.ReadFile(fname)
@@ -86,5 +97,13 @@ func buildVCProject(fname string) error {
 	parseIncludePaths(&result)
 	//fmt.Printf("item definition: %v\n", result.ItemDefinitionGroup[0].ClCompile)
 	fmt.Printf("files: %v\n", result)
+
+    var wg sync.WaitGroup
+    wg.Add(2)
+
+    go buildSearchPaths(wg, result.ItemDefinitionGroup)
+    go buildSearchFiles(wg, result.ItemGroup)
+    wg.Wait()
+
 	return nil
 }
