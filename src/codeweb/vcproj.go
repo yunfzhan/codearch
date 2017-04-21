@@ -3,12 +3,14 @@ package main
 import (
 	"fmt"
 	//"reflect"
+    "sort"
 	"errors"
 	"strings"
 	"encoding/xml"
 	"io/ioutil"
 	//"bytes"
     "sync"
+    "os"
     "path/filepath"
 )
 
@@ -73,18 +75,37 @@ func parseIncludePaths(project *VCProject) {
 	}
 }
 
-func buildSearchPaths(wg *sync.WaitGroup, paths []ItemDefinitionGroup) {
+func removeDuplicateStrings(stringArray *[]string) []string {
+    sort.Strings(*stringArray)
+    duplicate:=""
+    var result []string
+    for i:=0; i<len(*stringArray); i++ {
+        if duplicate!=(*stringArray)[i] {
+            duplicate=(*stringArray)[i]
+            result=append(result, duplicate)
+        }
+    }
+
+    return result
+}
+
+func buildSearchPaths(wg *sync.WaitGroup, paths []ItemDefinitionGroup, workdir string) {
     defer wg.Done()
+    // 改变当前的工作路径以便后面获取绝对路径的函数有效
+    os.Chdir(workdir)
     for i:=0; i<len(paths); i++ {
         arr:=strings.Split(paths[i].ClCompile, ";")
         for j:=0; j<len(arr); j++ {
-            gLookupTable.Paths=append(gLookupTable.Paths, arr[j])
+            abspath, _:=filepath.Abs(arr[j])
+            gLookupTable.Paths=append(gLookupTable.Paths, abspath)
         }
     }
+    gLookupTable.Paths=removeDuplicateStrings(&gLookupTable.Paths)
 }
 
 func buildSearchFiles(wg *sync.WaitGroup, files ItemGroup) {
     defer wg.Done()
+    gLookupTable.Files = make(map[string]string)
     for i:=0; i<len(files.Cpp); i++ {
         dir, file:=filepath.Split(files.Cpp[i].Include)
         gLookupTable.Files[file]=dir
@@ -97,6 +118,8 @@ func buildSearchFiles(wg *sync.WaitGroup, files ItemGroup) {
 }
 
 func buildVCProject(fname string) error {
+    // 区分当前文件的路径和文件名
+    dir, _:=filepath.Split(fname)
 	// 从文件读取，如可以如下：
 	content, err := ioutil.ReadFile(fname)
 	if err!=nil {
@@ -110,12 +133,12 @@ func buildVCProject(fname string) error {
 
 	parseIncludePaths(&result)
 	//fmt.Printf("item definition: %v\n", result.ItemDefinitionGroup[0].ClCompile)
-	fmt.Printf("files: %v\n", result)
+	//fmt.Printf("files: %v\n", result)
 
     var wg sync.WaitGroup
     wg.Add(2)
 
-    go buildSearchPaths(&wg, result.ItemDefinitionGroup)
+    go buildSearchPaths(&wg, result.ItemDefinitionGroup, dir)
     go buildSearchFiles(&wg, result.ItemGroup)
     wg.Wait()
 
