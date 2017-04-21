@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	//"bytes"
     "sync"
+    "path/filepath"
 )
 
 /*******************************************************************************
@@ -72,14 +73,27 @@ func parseIncludePaths(project *VCProject) {
 	}
 }
 
-func buildSearchPaths(wg sync.WaitGroup, paths []ItemDefinitionGroup) {
+func buildSearchPaths(wg *sync.WaitGroup, paths []ItemDefinitionGroup) {
     defer wg.Done()
-
+    for i:=0; i<len(paths); i++ {
+        arr:=strings.Split(paths[i].ClCompile, ";")
+        for j:=0; j<len(arr); j++ {
+            gLookupTable.Paths=append(gLookupTable.Paths, arr[j])
+        }
+    }
 }
 
-func buildSearchFiles(wg sync.WaitGroup, files ItemGroup) {
+func buildSearchFiles(wg *sync.WaitGroup, files ItemGroup) {
     defer wg.Done()
+    for i:=0; i<len(files.Cpp); i++ {
+        dir, file:=filepath.Split(files.Cpp[i].Include)
+        gLookupTable.Files[file]=dir
+    }
 
+    for i:=0; i<len(files.Header); i++ {
+        dir, file:=filepath.Split(files.Header[i].Include)
+        gLookupTable.Files[file]=dir
+    }
 }
 
 func buildVCProject(fname string) error {
@@ -101,9 +115,10 @@ func buildVCProject(fname string) error {
     var wg sync.WaitGroup
     wg.Add(2)
 
-    go buildSearchPaths(wg, result.ItemDefinitionGroup)
-    go buildSearchFiles(wg, result.ItemGroup)
+    go buildSearchPaths(&wg, result.ItemDefinitionGroup)
+    go buildSearchFiles(&wg, result.ItemGroup)
     wg.Wait()
 
+    fmt.Println(gLookupTable)
 	return nil
 }
