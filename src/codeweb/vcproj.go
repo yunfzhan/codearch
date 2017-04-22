@@ -1,9 +1,10 @@
 package main
 
 import (
-	"fmt"
+	//"fmt"
 	//"reflect"
     "sort"
+    //"strconv"
 	"errors"
 	"strings"
 	"encoding/xml"
@@ -45,7 +46,8 @@ type Include struct {
 	Unmarshal方法无法解析出路径，所以使用原始的方法来解析出路径并存储到
 	结果当中。
 */
-func parseIncludePaths(project *VCProject) {
+func parseIncludePaths(project *VCProject) bool {
+    result:=false
 	for i:=0; i<len(project.ItemDefinitionGroup); i++ {
 		inputReader:=strings.NewReader(project.ItemDefinitionGroup[i].ClCompile)
 		decoder:=xml.NewDecoder(inputReader)
@@ -69,10 +71,12 @@ func parseIncludePaths(project *VCProject) {
 					e=errors.New("Tag found")
 					project.ItemDefinitionGroup[i].ClCompile=content
 					bMetIncludes=false
+                    result=true
 				}
 			}
 		}
 	}
+    return result
 }
 
 func removeDuplicateStrings(stringArray *[]string) []string {
@@ -106,12 +110,16 @@ func buildSearchPaths(wg *sync.WaitGroup, paths []ItemDefinitionGroup, workdir s
 func buildSearchFiles(wg *sync.WaitGroup, files ItemGroup) {
     defer wg.Done()
     gLookupTable.Files = make(map[string]string)
+    //分析CPP文件
     for i:=0; i<len(files.Cpp); i++ {
+        //因为在Windows系统中，如果文件名包括路径，那么分隔符一定是\，所以在内部处理时统一换成/。
+        files.Cpp[i].Include=strings.Replace(files.Cpp[i].Include, "\\",string(os.PathSeparator), -1)
         dir, file:=filepath.Split(files.Cpp[i].Include)
         gLookupTable.Files[file]=dir
     }
-
+    //分析头文件
     for i:=0; i<len(files.Header); i++ {
+        files.Header[i].Include=strings.Replace(files.Header[i].Include, "\\",string(os.PathSeparator), -1)
         dir, file:=filepath.Split(files.Header[i].Include)
         gLookupTable.Files[file]=dir
     }
@@ -131,17 +139,20 @@ func buildVCProject(fname string) error {
 		return err
 	}
 
-	parseIncludePaths(&result)
+    hasInclude:=parseIncludePaths(&result)
 	//fmt.Printf("item definition: %v\n", result.ItemDefinitionGroup[0].ClCompile)
 	//fmt.Printf("files: %v\n", result)
 
     var wg sync.WaitGroup
-    wg.Add(2)
-
-    go buildSearchPaths(&wg, result.ItemDefinitionGroup, dir)
+    if hasInclude {
+        wg.Add(2)
+        go buildSearchPaths(&wg, result.ItemDefinitionGroup, dir)
+    } else {
+        wg.Add(1)
+    }
     go buildSearchFiles(&wg, result.ItemGroup)
     wg.Wait()
 
-    fmt.Println(gLookupTable)
+    //fmt.Println(gLookupTable)
 	return nil
 }

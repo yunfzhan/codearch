@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"errors"
+    "path/filepath"
 )
 /*******************************************************************************
 *
@@ -44,6 +45,7 @@ type FilesArch struct{
 }
 
 var gargs GArguments
+var ig bool //ignore case search
 //var argMap map[string][]string
 
 /*******************************************************************************
@@ -80,7 +82,18 @@ func parseMakefile(make string) {
 		if 	err:=buildVCProject(make); err!=nil {
 			log.Fatal(err)
 		}
-	}
+        ig=true
+	} else {
+        ig=false
+    }
+}
+
+func cleanFn(path string, info os.FileInfo, err error) error {
+    filename:=strings.ToLower(info.Name())
+    if info.Mode().IsRegular() && (strings.HasSuffix(filename, ".cpp") || strings.HasSuffix(filename, ".h") || strings.HasSuffix(filename, ".cxx") || strings.HasSuffix(filename, ".hpp")) && !gLookupTable.Contains(info.Name(), ig/*在Windows系统中文件名是不区分大小写，而Linux却不是。所以需要这个参数*/) {
+        fmt.Printf("Not found %s\n", info.Name())
+    }
+    return nil
 }
 
 func main(){
@@ -113,7 +126,8 @@ func main(){
 
 	if gargs.clean {
 		//Clean up abundant files of the project
-		
+        root, _ := filepath.Split(gargs.project.param)
+        filepath.Walk(root, cleanFn)
 	} else if gargs.file.flag=="f" && gargs.file.param!=""{
 
 	} else {
