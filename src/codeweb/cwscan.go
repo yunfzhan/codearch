@@ -87,7 +87,9 @@ func parseMakefile(make string) {
         ig=false
     }
 }
-
+/*
+    搜索工程文件中不存在的源代码和头文件
+*/
 func cleanFn(path string, info os.FileInfo, err error) error {
     filename:=strings.ToLower(info.Name())
     if info.Mode().IsRegular() && (strings.HasSuffix(filename, ".cpp") || strings.HasSuffix(filename, ".h") || strings.HasSuffix(filename, ".cxx") || strings.HasSuffix(filename, ".hpp")) && !gLookupTable.Contains(info.Name(), ig/*在Windows系统中文件名是不区分大小写，而Linux却不是。所以需要这个参数*/) {
@@ -129,7 +131,9 @@ func main(){
         root, _ := filepath.Split(gargs.project.param)
         filepath.Walk(root, cleanFn)
 	} else if gargs.file.flag=="f" && gargs.file.param!=""{
-
+        _, basef := filepath.Split(gargs.file.param)
+        gLookupTable.Scanner.Init(basef)
+        gLookupTable.Scanner.Walk()
 	} else {
 		log.Fatal("Missing file name to scan.")
 	}
