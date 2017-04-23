@@ -1,7 +1,10 @@
 package main
 
 import (
+    "os"
     "strings"
+    "bufio"
+    "regexp"
 )
 /**************************************************
 *           待扫描文件队列                                
@@ -57,15 +60,42 @@ func (cr *CodeReference) Init(fname string) {
     cr.scanningQueue.push(fname)
 }
 
+func readIncludes(fname string) ([]string, error) {
+    f, err:=os.Open(fname)
+    if err!=nil {
+        return nil, err
+    }
+
+    defer f.Close()
+
+    reg:=regexp.MustCompile(`#include\s+[<\"].+[>\"]`)
+    var lines []string
+    scanner:=bufio.NewScanner(f)
+    for scanner.Scan() {
+        line:=scanner.Text()
+        line=reg.FindString(line)
+        if line!="" {
+            lines=append(lines, line)
+        }
+    }
+
+    if scanner.Err()!=nil {
+        return nil, scanner.Err()
+    }
+
+    return lines, nil
+}
+
 func (cr *CodeReference) Walk() {
 
      for !cr.scanningQueue.empty() {
-
+        fname:=cr.scanningQueue.pop()
+        readIncludes(fname)
      }
 }
 
 /**************************************************
-*                                                  
+*         存储工程文件中包含路径和文件的结构体                       
 **************************************************/
 type LookupTable struct {
 	Paths []string
