@@ -100,7 +100,7 @@ func cleanFn(path string, info os.FileInfo, err error) error {
 
 func main(){
 	argnum := len(os.Args)
-	if argnum==1 || argnum>4 {
+	if argnum==1 || argnum>5 {
 		//No arguments
 		printHelp()
 		return

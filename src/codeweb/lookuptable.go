@@ -2,6 +2,7 @@ package main
 
 import (
     "os"
+    "fmt"
     "strings"
     "bufio"
     "regexp"
@@ -43,7 +44,7 @@ func (q *Queue) pop() string {
 }
 
 func (q *Queue) empty() bool {
-    return q.head==q.tail
+    return q.head==nil
 }
 
 /**************************************************
@@ -68,14 +69,18 @@ func readIncludes(fname string) ([]string, error) {
 
     defer f.Close()
 
-    reg:=regexp.MustCompile(`#include\s+[<\"].+[>\"]`)
+    regInclude:=regexp.MustCompile(`#include\s+[<\"].+[>\"]`)
+    regHeader:=regexp.MustCompile(`[<\"].+[>\"]`)
     var lines []string
     scanner:=bufio.NewScanner(f)
     for scanner.Scan() {
         line:=scanner.Text()
-        line=reg.FindString(line)
+        line=regInclude.FindString(line)
         if line!="" {
-            lines=append(lines, line)
+            header:=regHeader.FindString(line)
+            if header!="" {
+                lines=append(lines, header[1:len(header)-1])
+            }
         }
     }
 
@@ -87,11 +92,11 @@ func readIncludes(fname string) ([]string, error) {
 }
 
 func (cr *CodeReference) Walk() {
-
-     for !cr.scanningQueue.empty() {
+    for !cr.scanningQueue.empty() {
         fname:=cr.scanningQueue.pop()
-        readIncludes(fname)
-     }
+        lines, _:=readIncludes(fname)
+        fmt.Println(lines)
+    }
 }
 
 /**************************************************
