@@ -105,7 +105,7 @@ func main(){
 		printHelp()
 		return
 	}
-	
+
 	//Process command line
 	for i:=1; i<argnum; i++ {
 		arg:=os.Args[i]

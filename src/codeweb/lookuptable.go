@@ -3,6 +3,7 @@ package main
 import (
     "os"
     "fmt"
+    "bytes"
     "strings"
     "bufio"
     "regexp"
@@ -12,6 +13,7 @@ import (
 **************************************************/
 type Node struct {
     value string
+    parent string
     next *Node
 }
 
@@ -21,13 +23,13 @@ type Queue struct {
     tail *Node
 }
 
-func (q *Queue) push(t string) {
+func (q *Queue) push(t string, parent string) {
     _, ok:=q.visits[t]
     if ok {
         return
     }
 
-    p:=&Node{value: t, next: nil}
+    p:=&Node{value: t, parent: parent, next: nil}
     if q.head==nil {
         q.head=p
         q.tail=p
@@ -37,10 +39,11 @@ func (q *Queue) push(t string) {
     }
 }
 
-func (q *Queue) pop() string {
-    result:=q.head.value
+func (q *Queue) pop() (string,string) {
+    v:=q.head.value
+    p:=q.head.parent
     q.head=q.head.next
-    return result
+    return v, p
 }
 
 func (q *Queue) empty() bool {
@@ -52,13 +55,14 @@ func (q *Queue) empty() bool {
 **************************************************/
 type CodeReference struct {
     scanningQueue Queue
+    Nodes []string
 }
 
 func (cr *CodeReference) Init(fname string) {
     cr.scanningQueue.visits=make(map[string]int)
     cr.scanningQueue.head=nil
     cr.scanningQueue.tail=nil
-    cr.scanningQueue.push(fname)
+    cr.scanningQueue.push(fname, "")
 }
 
 func readIncludes(fname string) ([]string, error) {
@@ -91,12 +95,31 @@ func readIncludes(fname string) ([]string, error) {
     return lines, nil
 }
 
+func (cr *CodeReference) createGraphNode(fname string, parent string) {
+    var buff bytes.Buffer
+    // Node attribute defined here
+    // Format: fname [attr=...]
+    buff.WriteString(fname)
+    buff.WriteString(" -> ")
+    buff.WriteString(parent)
+    cr.Nodes=append(cr.Nodes, buff.String())
+}
+
 func (cr *CodeReference) Walk() {
     for !cr.scanningQueue.empty() {
-        fname:=cr.scanningQueue.pop()
-        lines, _:=readIncludes(fname)
-        fmt.Println(lines)
+        fname, parent:=cr.scanningQueue.pop()
+        cr.createGraphNode(fname, parent)
+        lines, err:=readIncludes(fname)
+        if err!=nil {
+            break
+        }
+        for i:=0; i<len(lines); i++ {
+            fmt.Printf("Push %s %s\n", lines[i], fname)
+            cr.scanningQueue.push(lines[i],fname)
+        }
     }
+
+    fmt.Println(cr.Nodes)
 }
 
 /**************************************************
