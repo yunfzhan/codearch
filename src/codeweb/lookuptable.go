@@ -7,6 +7,8 @@ import (
     "strings"
     "bufio"
     "regexp"
+    "sync"
+    "path/filepath"
 )
 /**************************************************
 *           待扫描文件队列                                
@@ -66,6 +68,9 @@ func (cr *CodeReference) Init(fname string) {
 }
 
 func readIncludes(fname string) ([]string, error) {
+    if strings.HasPrefix(fname, "$$") {
+        return nil, nil
+    }
     f, err:=os.Open(fname)
     if err!=nil {
         return nil, err
@@ -97,29 +102,21 @@ func readIncludes(fname string) ([]string, error) {
 
 func (cr *CodeReference) createGraphNode(fname string, parent string) {
     var buff bytes.Buffer
-    // Node attribute defined here
-    // Format: fname [attr=...]
-    buff.WriteString(fname)
-    buff.WriteString(" -> ")
-    buff.WriteString(parent)
-    cr.Nodes=append(cr.Nodes, buff.String())
-}
-
-func (cr *CodeReference) Walk() {
-    for !cr.scanningQueue.empty() {
-        fname, parent:=cr.scanningQueue.pop()
-        cr.createGraphNode(fname, parent)
-        lines, err:=readIncludes(fname)
-        if err!=nil {
-            break
-        }
-        for i:=0; i<len(lines); i++ {
-            fmt.Printf("Push %s %s\n", lines[i], fname)
-            cr.scanningQueue.push(lines[i],fname)
-        }
+    if strings.HasPrefix(fname, "$$") {
+        buff.WriteString(fname[2:]+" [color=\"red\"]")
+        cr.Nodes=append(cr.Nodes, buff.String())
+        buff.Reset()
+        buff.WriteString(fname[2:])
+    } else {
+        _, f:=filepath.Split(fname)
+        // Node attribute defined here
+        // Format: fname [attr=...]
+        buff.WriteString(f)
     }
-
-    fmt.Println(cr.Nodes)
+    buff.WriteString(" -> ")
+    _, f:=filepath.Split(parent)
+    buff.WriteString(f)
+    cr.Nodes=append(cr.Nodes, buff.String())
 }
 
 /**************************************************
@@ -152,4 +149,50 @@ func (g LookupTable) Contains(name string, ignorecase bool) bool {
         _, ok=g.Files[name]
     }
     return ok
+}
+
+func (g LookupTable) searchInDirectories(fname string) string {
+    var result string=""
+    var wg sync.WaitGroup
+    wg.Add(len(g.Paths))
+
+    for i:=0; i<len(g.Paths); i++ {
+        go func(idx int) {
+            defer wg.Done()
+            filepath.Walk(g.Paths[idx], func(path string, info os.FileInfo, err error) error {
+                _, f:=filepath.Split(path)
+                if f==fname {
+                    result=path
+                }
+                return nil
+            })
+        }(i)
+    }
+    wg.Wait()
+    return result
+}
+
+func (g LookupTable) Walk() {
+    for !g.Scanner.scanningQueue.empty() {
+        fname, parent:=g.Scanner.scanningQueue.pop()
+        g.Scanner.createGraphNode(fname, parent)
+        lines, err:=readIncludes(fname)
+        if err!=nil {
+            break
+        }
+        for i:=0; lines!=nil && i<len(lines); i++ {
+            line:=g.searchInDirectories(lines[i])
+            if line=="" {
+                //没有找到文件，需要特殊标记
+                g.Scanner.scanningQueue.push("$$"+lines[i], fname)
+            } else {
+                g.Scanner.scanningQueue.push(line,fname)
+            }
+        }
+    }
+
+    for i:=0; i<len(g.Scanner.Nodes); i++ {
+
+        fmt.Println(g.Scanner.Nodes[i])
+    }
 }

@@ -133,7 +133,7 @@ func main(){
 	} else if gargs.file.flag=="f" && gargs.file.param!=""{
         _, basef := filepath.Split(gargs.file.param)
         gLookupTable.Scanner.Init(basef)
-        gLookupTable.Scanner.Walk()
+        gLookupTable.Walk()
 	} else {
 		log.Fatal("Missing file name to scan.")
 	}

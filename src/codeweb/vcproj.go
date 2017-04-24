@@ -128,6 +128,14 @@ func buildSearchFiles(wg *sync.WaitGroup, files ItemGroup) {
 func buildVCProject(fname string) error {
     // 区分当前文件的路径和文件名
     dir, _:=filepath.Split(fname)
+    var err error;
+    if dir=="" {
+        //没有指定目录时使用当前路径
+        if dir, err=os.Getwd(); err!=nil {
+            return err
+        }
+    }
+
 	// 从文件读取，如可以如下：
 	content, err := ioutil.ReadFile(fname)
 	if err!=nil {
@@ -153,6 +161,7 @@ func buildVCProject(fname string) error {
     go buildSearchFiles(&wg, result.ItemGroup)
     wg.Wait()
 
+    gLookupTable.Paths=append(gLookupTable.Paths, dir)
     //fmt.Println(gLookupTable)
 	return nil
 }
