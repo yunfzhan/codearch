@@ -67,6 +67,9 @@ func (cr *CodeReference) Init(fname string) {
     cr.scanningQueue.push(fname, "")
 }
 
+/**************************************************
+*         检索文件中的头文件                       
+**************************************************/
 func readIncludes(fname string) ([]string, error) {
     if strings.HasPrefix(fname, "$$") {
         return nil, nil
@@ -100,6 +103,9 @@ func readIncludes(fname string) ([]string, error) {
     return lines, nil
 }
 
+/**************************************************
+*         生成图的结点                       
+**************************************************/
 func (cr *CodeReference) createGraphNode(fname string, parent string) {
     var buff bytes.Buffer
     if strings.HasPrefix(fname, "$$") {
@@ -151,6 +157,9 @@ func (g LookupTable) Contains(name string, ignorecase bool) bool {
     return ok
 }
 
+/**************************************************
+*         在头文件目录中查找文件                       
+**************************************************/
 func (g LookupTable) searchInDirectories(fname string) string {
     var result string=""
     var wg sync.WaitGroup
@@ -175,6 +184,7 @@ func (g LookupTable) searchInDirectories(fname string) string {
 func (g LookupTable) Walk() {
     for !g.Scanner.scanningQueue.empty() {
         fname, parent:=g.Scanner.scanningQueue.pop()
+        fmt.Println(187, fname, parent)
         g.Scanner.createGraphNode(fname, parent)
         lines, err:=readIncludes(fname)
         if err!=nil {
