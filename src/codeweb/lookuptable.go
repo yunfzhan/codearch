@@ -2,7 +2,7 @@ package main
 
 import (
     "os"
-    "fmt"
+    //"fmt"
     "bytes"
     "strings"
     "bufio"
@@ -103,25 +103,39 @@ func readIncludes(fname string) ([]string, error) {
     return lines, nil
 }
 
+func getPureFileName(fname string) string {
+    fname=strings.Replace(fname, ".", "_", -1)
+    fname=strings.Replace(fname, "\\", "_", -1)
+    fname=strings.Replace(fname, "/", "_", -1)
+    return fname
+}
 /**************************************************
 *         生成图的结点                       
 **************************************************/
 func (cr *CodeReference) createGraphNode(fname string, parent string) {
     var buff bytes.Buffer
+    var fnameNoExt string
     if strings.HasPrefix(fname, "$$") {
-        buff.WriteString(fname[2:]+" [color=\"red\"]")
-        cr.Nodes=append(cr.Nodes, buff.String())
-        buff.Reset()
-        buff.WriteString(fname[2:])
+        fnameNoExt=getPureFileName(fname)
+        fnameNoExt=fnameNoExt[2:]
+        buff.WriteString(fnameNoExt+" [color=\"red\", label=\""+fname[2:]+"\"]")
     } else {
-        _, f:=filepath.Split(fname)
-        // Node attribute defined here
-        // Format: fname [attr=...]
-        buff.WriteString(f)
+        _, fnameNoPath:=filepath.Split(fname)
+        fnameNoExt=getPureFileName(fnameNoPath)
+        buff.WriteString(fnameNoExt+" [label=\""+fnameNoPath+"\"]")
     }
+    cr.Nodes=append(cr.Nodes, buff.String())
+    if parent=="" {
+        return
+    }
+    buff.Reset()
+    _, pnameNoPath:=filepath.Split(parent)
+    pnameNoExt:=getPureFileName(pnameNoPath)
+    buff.WriteString(pnameNoExt+" [label=\""+pnameNoPath+"\"]")
+    buff.Reset()
+    buff.WriteString(fnameNoExt)
     buff.WriteString(" -> ")
-    _, f:=filepath.Split(parent)
-    buff.WriteString(f)
+    buff.WriteString(pnameNoExt)
     cr.Nodes=append(cr.Nodes, buff.String())
 }
 
@@ -138,7 +152,7 @@ type LookupTable struct {
 
 var gLookupTable LookupTable
 
-func (g LookupTable) iContains(name string) bool {
+func (g *LookupTable) iContains(name string) bool {
     for k, _:=range gLookupTable.Files {
         if strings.ToUpper(name)==strings.ToUpper(k) {
             return true
@@ -147,7 +161,7 @@ func (g LookupTable) iContains(name string) bool {
     return false
 }
 
-func (g LookupTable) Contains(name string, ignorecase bool) bool {
+func (g *LookupTable) Contains(name string, ignorecase bool) bool {
     var ok bool
     if ignorecase {
         ok=g.iContains(name)
@@ -160,7 +174,7 @@ func (g LookupTable) Contains(name string, ignorecase bool) bool {
 /**************************************************
 *         在头文件目录中查找文件                       
 **************************************************/
-func (g LookupTable) searchInDirectories(fname string) string {
+func (g *LookupTable) searchInDirectories(fname string) string {
     var result string=""
     var wg sync.WaitGroup
     wg.Add(len(g.Paths))
@@ -181,10 +195,9 @@ func (g LookupTable) searchInDirectories(fname string) string {
     return result
 }
 
-func (g LookupTable) Walk() {
+func (g *LookupTable) Walk() {
     for !g.Scanner.scanningQueue.empty() {
         fname, parent:=g.Scanner.scanningQueue.pop()
-        fmt.Println(187, fname, parent)
         g.Scanner.createGraphNode(fname, parent)
         lines, err:=readIncludes(fname)
         if err!=nil {
@@ -199,10 +212,5 @@ func (g LookupTable) Walk() {
                 g.Scanner.scanningQueue.push(line,fname)
             }
         }
-    }
-
-    for i:=0; i<len(g.Scanner.Nodes); i++ {
-
-        fmt.Println(g.Scanner.Nodes[i])
     }
 }

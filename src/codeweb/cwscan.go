@@ -98,6 +98,21 @@ func cleanFn(path string, info os.FileInfo, err error) error {
     return nil
 }
 
+func createGraph(dir string, fname string) {
+    f, err:=os.Create(dir+fname+".dot")
+    fmt.Printf("Generated %s.dot\n", dir+fname)
+    if err!=nil {
+        log.Fatal(err)
+    }
+    defer f.Close()
+    f.WriteString("digraph cpp_graph {\n")
+    f.WriteString("\tnode [color=\"blue\"]\n")
+    for i:=0; i<len(gLookupTable.Scanner.Nodes); i++ {
+        f.WriteString(gLookupTable.Scanner.Nodes[i]+"\n")
+    }
+    f.WriteString("}\n")
+}
+
 func main(){
 	argnum := len(os.Args)
 	if argnum==1 || argnum>5 {
@@ -131,9 +146,10 @@ func main(){
         root, _ := filepath.Split(gargs.project.param)
         filepath.Walk(root, cleanFn)
 	} else if gargs.file.flag=="f" && gargs.file.param!=""{
-        _, basef := filepath.Split(gargs.file.param)
+        dir, basef := filepath.Split(gargs.file.param)
         gLookupTable.Scanner.Init(basef)
         gLookupTable.Walk()
+        createGraph(dir, basef)
 	} else {
 		log.Fatal("Missing file name to scan.")
 	}
