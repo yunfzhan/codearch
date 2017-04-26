@@ -20,17 +20,11 @@ type Node struct {
 }
 
 type Queue struct {
-    visits map[string]int
     head *Node
     tail *Node
 }
 
 func (q *Queue) push(t string, parent string) {
-    _, ok:=q.visits[t]
-    if ok {
-        return
-    }
-
     p:=&Node{value: t, parent: parent, next: nil}
     if q.head==nil {
         q.head=p
@@ -57,11 +51,12 @@ func (q *Queue) empty() bool {
 **************************************************/
 type CodeReference struct {
     scanningQueue Queue
+    visits map[string]string
     Nodes []string
 }
 
 func (cr *CodeReference) Init(fname string) {
-    cr.scanningQueue.visits=make(map[string]int)
+    cr.visits=make(map[string]string)
     cr.scanningQueue.head=nil
     cr.scanningQueue.tail=nil
     cr.scanningQueue.push(fname, "")
@@ -198,11 +193,16 @@ func (g *LookupTable) searchInDirectories(fname string) string {
 func (g *LookupTable) Walk() {
     for !g.Scanner.scanningQueue.empty() {
         fname, parent:=g.Scanner.scanningQueue.pop()
+        _, ok:=g.Scanner.visits[fname]
+        if ok {
+            continue
+        }
         g.Scanner.createGraphNode(fname, parent)
         lines, err:=readIncludes(fname)
         if err!=nil {
             break
         }
+        g.Scanner.visits[fname]=""
         for i:=0; lines!=nil && i<len(lines); i++ {
             line:=g.searchInDirectories(lines[i])
             if line=="" {

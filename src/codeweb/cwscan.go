@@ -147,7 +147,7 @@ func main(){
         filepath.Walk(root, cleanFn)
 	} else if gargs.file.flag=="f" && gargs.file.param!=""{
         dir, basef := filepath.Split(gargs.file.param)
-        gLookupTable.Scanner.Init(basef)
+        gLookupTable.Scanner.Init(gargs.file.param)
         gLookupTable.Walk()
         createGraph(dir, basef)
 	} else {
