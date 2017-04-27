@@ -2,6 +2,7 @@ package main
 
 import (
     "os"
+    "runtime"
     //"fmt"
     "bytes"
     "strings"
@@ -140,6 +141,7 @@ func (cr *CodeReference) createGraphNode(fname string, parent string) {
 *         存储工程文件中包含路径和文件的结构体                       
 **************************************************/
 type LookupTable struct {
+    ignoreCase bool
 	Paths []string
 	Files map[string]string
 
@@ -181,7 +183,9 @@ func (g *LookupTable) searchInDirectories(fname string) string {
             defer wg.Done()
             filepath.Walk(g.Paths[idx], func(path string, info os.FileInfo, err error) error {
                 _, f:=filepath.Split(path)
-                if f==fname {
+                if !g.ignoreCase && f==fname {
+                    result=path
+                } else if g.ignoreCase && strings.EqualFold(f, fname) {
                     result=path
                 }
                 return nil
@@ -193,6 +197,7 @@ func (g *LookupTable) searchInDirectories(fname string) string {
 }
 
 func (g *LookupTable) Walk() {
+    g.ignoreCase=runtime.GOOS=="windows"
     for !g.Scanner.scanningQueue.empty() {
         fname, parent:=g.Scanner.scanningQueue.pop()
         _, ok:=g.Scanner.visits[fname]
