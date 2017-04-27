@@ -106,6 +106,8 @@ func getPureFileName(fname string) string {
 }
 /**************************************************
 *         生成图的结点                       
+* 输出结点前加上node_，因为dot文件的结点名字首字母
+* 不能是非字母
 **************************************************/
 func (cr *CodeReference) createGraphNode(fname string, parent string) {
     var buff bytes.Buffer
@@ -113,11 +115,11 @@ func (cr *CodeReference) createGraphNode(fname string, parent string) {
     if strings.HasPrefix(fname, "$$") {
         fnameNoExt=getPureFileName(fname)
         fnameNoExt=fnameNoExt[2:]
-        buff.WriteString(fnameNoExt+" [color=\"red\", label=\""+fname[2:]+"\"]")
+        buff.WriteString("node_"+fnameNoExt+" [color=\"red\", label=\""+fname[2:]+"\"]")
     } else {
         _, fnameNoPath:=filepath.Split(fname)
         fnameNoExt=getPureFileName(fnameNoPath)
-        buff.WriteString(fnameNoExt+" [label=\""+fnameNoPath+"\"]")
+        buff.WriteString("node_"+fnameNoExt+" [label=\""+fnameNoPath+"\"]")
     }
     cr.Nodes=append(cr.Nodes, buff.String())
     if parent=="" {
@@ -126,11 +128,11 @@ func (cr *CodeReference) createGraphNode(fname string, parent string) {
     buff.Reset()
     _, pnameNoPath:=filepath.Split(parent)
     pnameNoExt:=getPureFileName(pnameNoPath)
-    buff.WriteString(pnameNoExt+" [label=\""+pnameNoPath+"\"]")
+    buff.WriteString("node_"+pnameNoExt+" [label=\""+pnameNoPath+"\"]")
     buff.Reset()
-    buff.WriteString(fnameNoExt)
+    buff.WriteString("node_"+fnameNoExt)
     buff.WriteString(" -> ")
-    buff.WriteString(pnameNoExt)
+    buff.WriteString("node_"+pnameNoExt)
     cr.Nodes=append(cr.Nodes, buff.String())
 }
 
