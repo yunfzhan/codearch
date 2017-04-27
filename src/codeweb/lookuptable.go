@@ -77,7 +77,7 @@ func readIncludes(fname string) ([]string, error) {
     defer f.Close()
 
     regInclude:=regexp.MustCompile(`#include\s+[<\"].+[>\"]`)
-    regHeader:=regexp.MustCompile(`[<\"].+[>\"]`)
+    regHeader:=regexp.MustCompile(`[<\"].+?[>\"]`)
     var lines []string
     scanner:=bufio.NewScanner(f)
     for scanner.Scan() {
