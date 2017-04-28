@@ -4,7 +4,6 @@ import (
     "os"
     "runtime"
     //"fmt"
-    "bytes"
     "strings"
     "bufio"
     "regexp"
@@ -53,7 +52,6 @@ func (q *Queue) empty() bool {
 type CodeReference struct {
     scanningQueue Queue
     visits map[string]string
-    Nodes []string
 }
 
 func (cr *CodeReference) Init(fname string) {
@@ -99,43 +97,6 @@ func readIncludes(fname string) ([]string, error) {
     return lines, nil
 }
 
-func getPureFileName(fname string) string {
-    fname=strings.Replace(fname, ".", "_", -1)
-    fname=strings.Replace(fname, "\\", "_", -1)
-    fname=strings.Replace(fname, "/", "_", -1)
-    return fname
-}
-/**************************************************
-*         生成图的结点                       
-* 输出结点前加上node_，因为dot文件的结点名字首字母
-* 不能是非字母
-**************************************************/
-func (cr *CodeReference) createGraphNode(fname string, parent string) {
-    var buff bytes.Buffer
-    var fnameNoExt string
-    if strings.HasPrefix(fname, "$$") {
-        fnameNoExt=getPureFileName(fname)
-        fnameNoExt=fnameNoExt[2:]
-        buff.WriteString("node_"+fnameNoExt+" [color=\"red\", label=\""+fname[2:]+"\"]")
-    } else {
-        _, fnameNoPath:=filepath.Split(fname)
-        fnameNoExt=getPureFileName(fnameNoPath)
-        buff.WriteString("node_"+fnameNoExt+" [label=\""+fnameNoPath+"\"]")
-    }
-    cr.Nodes=append(cr.Nodes, buff.String())
-    if parent=="" {
-        return
-    }
-    buff.Reset()
-    _, pnameNoPath:=filepath.Split(parent)
-    pnameNoExt:=getPureFileName(pnameNoPath)
-    buff.WriteString("node_"+pnameNoExt+" [label=\""+pnameNoPath+"\"]")
-    buff.Reset()
-    buff.WriteString("node_"+fnameNoExt)
-    buff.WriteString(" -> ")
-    buff.WriteString("node_"+pnameNoExt)
-    cr.Nodes=append(cr.Nodes, buff.String())
-}
 
 /**************************************************
 *         存储工程文件中包含路径和文件的结构体                       
@@ -196,7 +157,7 @@ func (g *LookupTable) searchInDirectories(fname string) string {
     return result
 }
 
-func (g *LookupTable) Walk() {
+func (g *LookupTable) Walk(_callback func(fname string, parent string)) {
     g.ignoreCase=runtime.GOOS=="windows"
     for !g.Scanner.scanningQueue.empty() {
         fname, parent:=g.Scanner.scanningQueue.pop()
@@ -204,7 +165,7 @@ func (g *LookupTable) Walk() {
         if ok {
             continue
         }
-        g.Scanner.createGraphNode(fname, parent)
+        _callback(fname, parent)
         lines, err:=readIncludes(fname)
         if err!=nil {
             break

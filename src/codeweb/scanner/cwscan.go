@@ -4,6 +4,7 @@ import (
 	"log"
 	"fmt"
 	"os"
+    "bytes"
 	"strings"
 	"errors"
     "path/filepath"
@@ -46,6 +47,7 @@ type FilesArch struct{
 
 var gargs GArguments
 var ig bool //ignore case search
+var nodes []string
 //var argMap map[string][]string
 
 /*******************************************************************************
@@ -98,6 +100,44 @@ func cleanFn(path string, info os.FileInfo, err error) error {
     return nil
 }
 
+func getPureFileName(fname string) string {
+    fname=strings.Replace(fname, ".", "_", -1)
+    fname=strings.Replace(fname, "\\", "_", -1)
+    fname=strings.Replace(fname, "/", "_", -1)
+    return fname
+}
+/**************************************************
+*         生成图的结点                       
+* 输出结点前加上node_，因为dot文件的结点名字首字母
+* 不能是非字母
+**************************************************/
+func  createGraphNode(fname string, parent string) {
+    var buff bytes.Buffer
+    var fnameNoExt string
+    if strings.HasPrefix(fname, "$$") {
+        fnameNoExt=getPureFileName(fname)
+        fnameNoExt=fnameNoExt[2:]
+        buff.WriteString("node_"+fnameNoExt+" [color=\"red\", label=\""+fname[2:]+"\"]")
+    } else {
+        _, fnameNoPath:=filepath.Split(fname)
+        fnameNoExt=getPureFileName(fnameNoPath)
+        buff.WriteString("node_"+fnameNoExt+" [label=\""+fnameNoPath+"\"]")
+    }
+    nodes=append(nodes, buff.String())
+    if parent=="" {
+        return
+    }
+    buff.Reset()
+    _, pnameNoPath:=filepath.Split(parent)
+    pnameNoExt:=getPureFileName(pnameNoPath)
+    buff.WriteString("node_"+pnameNoExt+" [label=\""+pnameNoPath+"\"]")
+    buff.Reset()
+    buff.WriteString("node_"+fnameNoExt)
+    buff.WriteString(" -> ")
+    buff.WriteString("node_"+pnameNoExt)
+    nodes=append(nodes, buff.String())
+}
+
 func createGraph(dir string, fname string) {
     f, err:=os.Create(dir+fname+".dot")
     fmt.Printf("Generated %s.dot\n", dir+fname)
@@ -107,8 +147,8 @@ func createGraph(dir string, fname string) {
     defer f.Close()
     f.WriteString("digraph cpp_graph {\n")
     f.WriteString("\tnode [color=\"blue\"]\n")
-    for i:=0; i<len(gLookupTable.Scanner.Nodes); i++ {
-        f.WriteString(gLookupTable.Scanner.Nodes[i]+"\n")
+    for i:=0; i<len(nodes); i++ {
+        f.WriteString(nodes[i]+"\n")
     }
     f.WriteString("}\n")
 }
@@ -148,7 +188,7 @@ func main(){
 	} else if gargs.file.flag=="f" && gargs.file.param!=""{
         dir, basef := filepath.Split(gargs.file.param)
         gLookupTable.Scanner.Init(gargs.file.param)
-        gLookupTable.Walk()
+        gLookupTable.Walk(createGraphNode)
         createGraph(dir, basef)
 	} else {
 		log.Fatal("Missing file name to scan.")
