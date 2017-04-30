@@ -58,6 +58,9 @@ func (cr *CodeReference) Init(fname string) {
     cr.visits=make(map[string]string)
     cr.scanningQueue.head=nil
     cr.scanningQueue.tail=nil
+    if !filepath.IsAbs(fname) {
+        fname, _=filepath.Abs(fname)
+    }
     cr.scanningQueue.push(fname, "")
 }
 

@@ -3,6 +3,7 @@ package main
 import (
 	//"fmt"
 	//"reflect"
+    //"regexp"
     "sort"
     //"strconv"
 	"errors"
@@ -93,6 +94,15 @@ func removeDuplicateStrings(stringArray *[]string) []string {
     return result
 }
 
+func absPath(path string, workdir string) (string, error) {
+    //re := regexp.MustCompile(`(^|\\|/)\.(\\|/)`)
+    //s:=re.ReplaceAllString(path, "/")
+    //fmt.Println(filepath.Clean(s))
+    os.Chdir(workdir)
+    path=strings.Replace(path, "\\", "/", -1)
+    return filepath.Abs(path)
+}
+
 func buildSearchPaths(wg *sync.WaitGroup, paths []ItemDefinitionGroup, workdir string) {
     defer wg.Done()
     // 改变当前的工作路径以便后面获取绝对路径的函数有效
@@ -100,8 +110,8 @@ func buildSearchPaths(wg *sync.WaitGroup, paths []ItemDefinitionGroup, workdir s
     for i:=0; i<len(paths); i++ {
         arr:=strings.Split(paths[i].ClCompile, ";")
         for j:=0; j<len(arr); j++ {
-            abspath, _:=filepath.Abs(arr[j])
-            gLookupTable.Paths=append(gLookupTable.Paths, abspath)
+            absolutepath, _:=absPath(arr[j], workdir)//filepath.Abs(arr[j])
+            gLookupTable.Paths=append(gLookupTable.Paths,absolutepath)
         }
     }
     gLookupTable.Paths=removeDuplicateStrings(&gLookupTable.Paths)
@@ -160,7 +170,7 @@ func buildVCProject(fname string) error {
     }
     go buildSearchFiles(&wg, result.ItemGroup)
     wg.Wait()
-
+    //把当前目录或待搜索文件目录加入搜索路径
     gLookupTable.Paths=append(gLookupTable.Paths, dir)
     //fmt.Println(gLookupTable)
 	return nil
