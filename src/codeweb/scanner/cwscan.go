@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"fmt"
+    //"io"
 	"os"
     "bytes"
 	"strings"
@@ -30,7 +31,7 @@ func printHelp(){
 *            定义数据结构和全局变量
 *******************************************************************************/
 type Option struct{
-	flag string
+	flag bool
 	param string
 }
 
@@ -56,20 +57,20 @@ func processCmdLine(arg string, flag bool) error {
 		case "c":
 			gargs.clean=true
 		case "f":
-			gargs.file.flag="f"
+			gargs.file.flag=true
 		case "m":
-			gargs.project.flag="m"
+			gargs.project.flag=true
         case "o":
-            gargs.output.flag="o"
+            gargs.output.flag=true
 		default:
 			return errors.New("Invalid option: "+arg)
 		}
 	} else {
-		if gargs.file.flag=="f" && gargs.file.param=="" {
+		if gargs.file.flag && gargs.file.param=="" {
 			gargs.file.param=arg
-		} else if gargs.project.flag=="m" && gargs.project.param=="" {
+		} else if gargs.project.flag && gargs.project.param=="" {
 			gargs.project.param=arg
-		} else if gargs.output.flag=="o" && gargs.output.param=="" {
+		} else if gargs.output.flag && gargs.output.param=="" {
             gargs.output.param=arg
         } else {
 			return errors.New("Unknown arguments: "+arg)
@@ -138,19 +139,19 @@ func  createGraphNode(fname string, parent string) {
     nodes=append(nodes, buff.String())
 }
 
-func createGraph(dir string, fname string) {
-    f, err:=os.Create(dir+fname+".dot")
-    fmt.Printf("Generated %s.dot\n", dir+fname)
-    if err!=nil {
-        log.Fatal(err)
+func createGraph(o *FileWriter) {
+    o.Open()
+    fmt.Printf("Generated %s\n",o.Name)
+    if o.Err!=nil {
+        log.Fatal(o.Err)
     }
-    defer f.Close()
-    f.WriteString("digraph cpp_graph {\n")
-    f.WriteString("\tnode [color=\"blue\"]\n")
+    defer o.Close()
+    o.Write([]byte("digraph cpp_graph {\n"))
+    o.Write([]byte("\tnode [color=\"blue\"]\n"))
     for i:=0; i<len(nodes); i++ {
-        f.WriteString(nodes[i]+"\n")
+        o.Write([]byte(nodes[i]+"\n"))
     }
-    f.WriteString("}\n")
+    o.Write([]byte("}\n"))
 }
 
 func main(){
@@ -175,26 +176,31 @@ func main(){
 		}
 	}
 
-	if gargs.project.flag!="m" && gargs.project.param=="" {
+    if !gargs.project.flag && gargs.project.param=="" {
 		log.Fatal("Need a project name.")
 	}
 
+    var o *FileWriter
+    if gargs.output.flag && gargs.output.param!="" {
+        //指定输出文件，目前可以是输出dot文件或者sqlite数据库
+        o=&FileWriter{gargs.output.param, nil, nil}
+    }
 	parseMakefile(gargs.project.param)
 
 	if gargs.clean {
 		//列出不在工程文件中的文件
         root, _ := filepath.Split(gargs.project.param)
         filepath.Walk(root, cleanFn)
-	} else if gargs.file.flag=="f" && gargs.file.param!=""{
+	} else if gargs.file.flag && gargs.file.param!=""{
         //递归扫描指定文件中的头文件包括关系
-        dir, basef := filepath.Split(gargs.file.param)
         gLookupTable.Scanner.Init(gargs.file.param)
         gLookupTable.Walk(createGraphNode)
-        createGraph(dir, basef)
-	} else if gargs.output.flag=="o" && gargs.output.param!="" {
-        //指定输出文件，目前可以是输出dot文件或者sqlite数据库
-
-    } else {
+        fmt.Println(gargs.file.param)
+        if !gargs.output.flag {
+            o=&FileWriter{gargs.file.param+".dot", nil, nil}
+        }
+        createGraph(o)
+	} else {
 		log.Fatal("Missing file name to scan.")
 	}
 }
