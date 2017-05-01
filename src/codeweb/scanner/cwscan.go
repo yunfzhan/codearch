@@ -38,11 +38,7 @@ type GArguments struct{
 	clean bool
 	project Option
 	file Option
-}
-
-type FilesArch struct{
-	paths []string
-	files [][]string
+    output Option
 }
 
 var gargs GArguments
@@ -63,6 +59,8 @@ func processCmdLine(arg string, flag bool) error {
 			gargs.file.flag="f"
 		case "m":
 			gargs.project.flag="m"
+        case "o":
+            gargs.output.flag="o"
 		default:
 			return errors.New("Invalid option: "+arg)
 		}
@@ -71,7 +69,9 @@ func processCmdLine(arg string, flag bool) error {
 			gargs.file.param=arg
 		} else if gargs.project.flag=="m" && gargs.project.param=="" {
 			gargs.project.param=arg
-		} else {
+		} else if gargs.output.flag=="o" && gargs.output.param=="" {
+            gargs.output.param=arg
+        } else {
 			return errors.New("Unknown arguments: "+arg)
 		}
 	}
@@ -182,15 +182,19 @@ func main(){
 	parseMakefile(gargs.project.param)
 
 	if gargs.clean {
-		//Clean up abundant files of the project
+		//列出不在工程文件中的文件
         root, _ := filepath.Split(gargs.project.param)
         filepath.Walk(root, cleanFn)
 	} else if gargs.file.flag=="f" && gargs.file.param!=""{
+        //递归扫描指定文件中的头文件包括关系
         dir, basef := filepath.Split(gargs.file.param)
         gLookupTable.Scanner.Init(gargs.file.param)
         gLookupTable.Walk(createGraphNode)
         createGraph(dir, basef)
-	} else {
+	} else if gargs.output.flag=="o" && gargs.output.param!="" {
+        //指定输出文件，目前可以是输出dot文件或者sqlite数据库
+
+    } else {
 		log.Fatal("Missing file name to scan.")
 	}
 }
