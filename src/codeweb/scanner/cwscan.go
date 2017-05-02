@@ -37,6 +37,7 @@ type Option struct{
 
 type GArguments struct{
 	clean bool
+    recursive bool //扫描所有工程中的文件调用关系
 	project Option
 	file Option
     output Option
@@ -56,6 +57,8 @@ func processCmdLine(arg string, flag bool) error {
 		switch arg {
 		case "c":
 			gargs.clean=true
+        case "p":
+            gargs.recursive=true
 		case "f":
 			gargs.file.flag=true
 		case "m":
