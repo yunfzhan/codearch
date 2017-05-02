@@ -139,19 +139,19 @@ func  createGraphNode(fname string, parent string) {
     nodes=append(nodes, buff.String())
 }
 
-func createGraph(o *FileWriter) {
-    o.Open()
-    fmt.Printf("Generated %s\n",o.Name)
-    if o.Err!=nil {
-        log.Fatal(o.Err)
+func createGraph(o IOutputWriter) {
+    err:=o.Open()
+    fmt.Printf("Generated %s\n",o.Name())
+    if err!=nil {
+        log.Fatal(err)
     }
     defer o.Close()
-    o.Write([]byte("digraph cpp_graph {\n"))
-    o.Write([]byte("\tnode [color=\"blue\"]\n"))
+    o.WriteString("digraph cpp_graph {\n")
+    o.WriteString("\tnode [color=\"blue\"]\n")
     for i:=0; i<len(nodes); i++ {
-        o.Write([]byte(nodes[i]+"\n"))
+        o.WriteString(nodes[i]+"\n")
     }
-    o.Write([]byte("}\n"))
+    o.WriteString("}\n")
 }
 
 func main(){
@@ -180,10 +180,9 @@ func main(){
 		log.Fatal("Need a project name.")
 	}
 
-    var o *FileWriter
     if gargs.output.flag && gargs.output.param!="" {
         //指定输出文件，目前可以是输出dot文件或者sqlite数据库
-        o=&FileWriter{gargs.output.param, nil, nil}
+        log.Fatal("Not specified any output file name.")
     }
 	parseMakefile(gargs.project.param)
 
@@ -195,9 +194,11 @@ func main(){
         //递归扫描指定文件中的头文件包括关系
         gLookupTable.Scanner.Init(gargs.file.param)
         gLookupTable.Walk(createGraphNode)
-        fmt.Println(gargs.file.param)
+        o:=new(FileWriter)
         if !gargs.output.flag {
-            o=&FileWriter{gargs.file.param+".dot", nil, nil}
+            o.name=gargs.file.param+".dot"
+        } else {
+            o.name=gargs.output.param
         }
         createGraph(o)
 	} else {
