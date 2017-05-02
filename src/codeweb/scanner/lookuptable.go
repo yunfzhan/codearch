@@ -108,8 +108,6 @@ type LookupTable struct {
     ignoreCase bool
 	Paths []string
 	Files map[string]string
-
-    Scanner CodeReference
 }
 
 
@@ -160,11 +158,11 @@ func (g *LookupTable) searchInDirectories(fname string) string {
     return result
 }
 
-func (g *LookupTable) Walk(_callback func(fname string, parent string)) {
+func (g *LookupTable) Walk(scanner *CodeReference, _callback func(fname string, parent string)) {
     g.ignoreCase=runtime.GOOS=="windows"
-    for !g.Scanner.scanningQueue.empty() {
-        fname, parent:=g.Scanner.scanningQueue.pop()
-        _, ok:=g.Scanner.visits[fname]
+    for !scanner.scanningQueue.empty() {
+        fname, parent:=scanner.scanningQueue.pop()
+        _, ok:=scanner.visits[fname]
         if ok {
             continue
         }
@@ -173,14 +171,14 @@ func (g *LookupTable) Walk(_callback func(fname string, parent string)) {
         if err!=nil {
             break
         }
-        g.Scanner.visits[fname]=""
+        scanner.visits[fname]=""
         for i:=0; lines!=nil && i<len(lines); i++ {
             line:=g.searchInDirectories(lines[i])
             if line=="" {
                 //没有找到文件，需要特殊标记
-                g.Scanner.scanningQueue.push("$$"+lines[i], fname)
+                scanner.scanningQueue.push("$$"+lines[i], fname)
             } else {
-                g.Scanner.scanningQueue.push(line,fname)
+                scanner.scanningQueue.push(line,fname)
             }
         }
     }

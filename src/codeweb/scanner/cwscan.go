@@ -24,6 +24,8 @@ func printHelp(){
 	fmt.Println("")
 	fmt.Println("cwscan -m <VC project or makefile> -f <file name to scan>")
 	fmt.Println("Create topology of included files of a file.")
+    fmt.Println("cwscan -m <VC project or makefile> -d")
+    fmt.Println("Recursively scan all project files.")
 }
 
 /*******************************************************************************
@@ -195,8 +197,9 @@ func main(){
         filepath.Walk(root, cleanFn)
 	} else if gargs.file.flag && gargs.file.param!=""{
         //递归扫描指定文件中的头文件包括关系
-        gLookupTable.Scanner.Init(gargs.file.param)
-        gLookupTable.Walk(createGraphNode)
+        scanner:=new(CodeReference)
+        scanner.Init(gargs.file.param)
+        gLookupTable.Walk(scanner, createGraphNode)
         o:=new(FileWriter)
         if !gargs.output.flag {
             o.name=gargs.file.param+".dot"
@@ -204,7 +207,11 @@ func main(){
             o.name=gargs.output.param
         }
         createGraph(o)
-	} else {
+	} else if gargs.recursive {
+        root, _:=filepath.Split(gargs.project.param)
+
+        os.Chdir(root)
+    } else {
 		log.Fatal("Missing file name to scan.")
 	}
 }
