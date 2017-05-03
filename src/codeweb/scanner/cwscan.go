@@ -159,6 +159,14 @@ func createGraph(o IOutputWriter) {
     o.WriteString("}\n")
 }
 
+func scanSingleFile(file string, o IOutputWriter) {
+    //递归扫描指定文件中的头文件包括关系
+    scanner:=new(CodeReference)
+    scanner.Init(file)
+    gLookupTable.Walk(scanner, createGraphNode)
+    createGraph(o)
+}
+
 func main(){
 	argnum := len(os.Args)
 	if argnum==1 || argnum>5 {
@@ -196,21 +204,23 @@ func main(){
         root, _ := filepath.Split(gargs.project.param)
         filepath.Walk(root, cleanFn)
 	} else if gargs.file.flag && gargs.file.param!=""{
-        //递归扫描指定文件中的头文件包括关系
-        scanner:=new(CodeReference)
-        scanner.Init(gargs.file.param)
-        gLookupTable.Walk(scanner, createGraphNode)
         o:=new(FileWriter)
         if !gargs.output.flag {
             o.name=gargs.file.param+".dot"
         } else {
             o.name=gargs.output.param
         }
-        createGraph(o)
+        scanSingleFile(gargs.file.param, o)
 	} else if gargs.recursive {
         root, _:=filepath.Split(gargs.project.param)
 
         os.Chdir(root)
+        for k, _:=range gLookupTable.Files {
+            abspath, _:=filepath.Abs(k)
+            o:=new(FileWriter)
+            o.name=abspath+".dot"
+            scanSingleFile(abspath, o)
+        }
     } else {
 		log.Fatal("Missing file name to scan.")
 	}
