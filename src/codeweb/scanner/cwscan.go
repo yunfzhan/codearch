@@ -87,11 +87,14 @@ func processCmdLine(arg string, flag bool) error {
 func parseMakefile(make string) {
 	if strings.HasSuffix(make, ".vcxproj") || strings.HasSuffix(make, ".vcproj") {
 		// VC project
-		if	err:=buildVCProject(make); err!=nil {
+		if err:=buildVCProject(make); err!=nil {
 			log.Fatal(err)
 		}
         ig=true
 	} else {
+        if err:=buildMakefile(make); err!=nil {
+            log.Fatal(err)
+        }
         ig=false
     }
 }
