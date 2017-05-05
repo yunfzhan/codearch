@@ -20,7 +20,7 @@ import (
 *
 *           XML数据结构 
 *******************************************************************************/
-type VCProject struct {
+type VCXProject struct {
 	ItemDefinitionGroup []ItemDefinitionGroup
 	ItemGroup ItemGroup
 }
@@ -47,7 +47,7 @@ type Include struct {
 	Unmarshal方法无法解析出路径，所以使用原始的方法来解析出路径并存储到
 	结果当中。
 */
-func parseIncludePaths(project *VCProject) bool {
+func parseIncludePaths(project *VCXProject) bool {
     result:=false
 	for i:=0; i<len(project.ItemDefinitionGroup); i++ {
 		inputReader:=strings.NewReader(project.ItemDefinitionGroup[i].ClCompile)
@@ -135,24 +135,9 @@ func buildSearchFiles(wg *sync.WaitGroup, files ItemGroup) {
     }
 }
 
-func buildVCProject(fname string) error {
-    // 区分当前文件的路径和文件名
-    dir, _:=filepath.Split(fname)
-    var err error;
-    if dir=="" {
-        //没有指定目录时使用当前路径
-        if dir, err=os.Getwd(); err!=nil {
-            return err
-        }
-    }
-
-	// 从文件读取，如可以如下：
-	content, err := ioutil.ReadFile(fname)
-	if err!=nil {
-		return err
-	}
-	var result VCProject
-	err=xml.Unmarshal(content, &result)
+func readVCXProject(content []byte, dir string) error {
+	var result VCXProject
+    err:=xml.Unmarshal(content, &result)
 	if err!=nil {
 		return err
 	}
@@ -170,8 +155,33 @@ func buildVCProject(fname string) error {
     }
     go buildSearchFiles(&wg, result.ItemGroup)
     wg.Wait()
+    return nil
+}
+
+func buildVCProject(fname string) error {
+    // 区分当前文件的路径和文件名
+    dir, _:=filepath.Split(fname)
+    var err error;
+    if dir=="" {
+        //没有指定目录时使用当前路径
+        if dir, err=os.Getwd(); err!=nil {
+            return err
+        }
+    }
+
+	// 从文件读取，如可以如下：
+	content, err := ioutil.ReadFile(fname)
+	if err!=nil {
+		return err
+	}
+
+    if strings.HasSuffix(fname, ".vcxproj") {
+        err=readVCXProject(content, dir)
+    } else if strings.HasSuffix(fname, ".vcproj") {
+
+    }
     //把当前目录或待搜索文件目录加入搜索路径
     gLookupTable.Paths=append(gLookupTable.Paths, dir)
     //fmt.Println(gLookupTable)
-	return nil
+	return err
 }
