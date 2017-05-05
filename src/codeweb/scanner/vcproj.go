@@ -158,6 +158,10 @@ func readVCXProject(content []byte, dir string) error {
     return nil
 }
 
+func readVCProject(content []byte, dir string) error {
+    return errors.New("Not supported yet.")
+}
+
 func buildVCProject(fname string) error {
     // 区分当前文件的路径和文件名
     dir, _:=filepath.Split(fname)
@@ -178,7 +182,7 @@ func buildVCProject(fname string) error {
     if strings.HasSuffix(fname, ".vcxproj") {
         err=readVCXProject(content, dir)
     } else if strings.HasSuffix(fname, ".vcproj") {
-
+        err=readVCProject(content, dir)
     }
     //把当前目录或待搜索文件目录加入搜索路径
     gLookupTable.Paths=append(gLookupTable.Paths, dir)
