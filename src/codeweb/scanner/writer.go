@@ -3,8 +3,30 @@ package main
 import (
     //"io"
     "os"
-    //"errors"
+    //"fmt"
 )
+
+type IContent interface {
+    AddString(line string)
+    Add(c IContent)
+    Read() []byte
+}
+
+type DotGraphContent struct {
+    buff []byte
+}
+
+func (d *DotGraphContent) AddString(line string) {
+    d.buff=append(d.buff, []byte(line+"\n")...)
+}
+
+func (d *DotGraphContent) Add(c IContent) {
+    d.buff=append(d.buff, c.Read()...)
+}
+
+func (d *DotGraphContent) Read() []byte {
+    return d.buff
+}
 
 type IOutputWriter interface {
     Name() string

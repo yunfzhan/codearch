@@ -158,7 +158,7 @@ func (g *LookupTable) searchInDirectories(fname string) string {
     return result
 }
 
-func (g *LookupTable) Walk(scanner *CodeReference, _callback func(fname string, parent string)) {
+func (g *LookupTable) Walk(scanner *CodeReference, content IContent, _callback func(fname string, parent string) IContent) {
     g.ignoreCase=runtime.GOOS=="windows"
     for !scanner.scanningQueue.empty() {
         fname, parent:=scanner.scanningQueue.pop()
@@ -166,7 +166,7 @@ func (g *LookupTable) Walk(scanner *CodeReference, _callback func(fname string, 
         if ok {
             continue
         }
-        _callback(fname, parent)
+        content.Add(_callback(fname, parent))
         lines, err:=readIncludes(fname)
         if err!=nil {
             break

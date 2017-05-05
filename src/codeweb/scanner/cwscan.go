@@ -47,7 +47,6 @@ type GArguments struct{
 
 var gargs GArguments
 var ig bool //ignore case search
-var nodes []string
 //var argMap map[string][]string
 
 /*******************************************************************************
@@ -117,7 +116,8 @@ func getPureFileName(fname string) string {
 * 输出结点前加上node_，因为dot文件的结点名字首字母
 * 不能是非字母
 **************************************************/
-func  createGraphNode(fname string, parent string) {
+func  createGraphNode(fname string, parent string) IContent {
+    r:=new(DotGraphContent)
     var buff bytes.Buffer
     var fnameNoExt string
     if strings.HasPrefix(fname, "$$") {
@@ -129,9 +129,10 @@ func  createGraphNode(fname string, parent string) {
         fnameNoExt=getPureFileName(fnameNoPath)
         buff.WriteString("node_"+fnameNoExt+" [label=\""+fnameNoPath+"\"]")
     }
-    nodes=append(nodes, buff.String())
+    //nodes=append(nodes, buff.String())
+    r.AddString(buff.String())
     if parent=="" {
-        return
+        return r
     }
     buff.Reset()
     _, pnameNoPath:=filepath.Split(parent)
@@ -141,10 +142,12 @@ func  createGraphNode(fname string, parent string) {
     buff.WriteString("node_"+fnameNoExt)
     buff.WriteString(" -> ")
     buff.WriteString("node_"+pnameNoExt)
-    nodes=append(nodes, buff.String())
+    //nodes=append(nodes, buff.String())
+    r.AddString(buff.String())
+    return r
 }
 
-func createGraph(o IOutputWriter) {
+func createGraph(o IOutputWriter, c IContent) {
     err:=o.Open()
     fmt.Printf("Generated %s\n",o.Name())
     if err!=nil {
@@ -153,9 +156,10 @@ func createGraph(o IOutputWriter) {
     defer o.Close()
     o.WriteString("digraph cpp_graph {\n")
     o.WriteString("\tnode [color=\"blue\"]\n")
-    for i:=0; i<len(nodes); i++ {
-        o.WriteString(nodes[i]+"\n")
-    }
+    o.Write(c.Read())
+    //for i:=0; i<len(nodes); i++ {
+    //    o.WriteString(nodes[i]+"\n")
+    //}
     o.WriteString("}\n")
 }
 
@@ -163,8 +167,9 @@ func scanSingleFile(file string, o IOutputWriter) {
     //递归扫描指定文件中的头文件包括关系
     scanner:=new(CodeReference)
     scanner.Init(file)
-    gLookupTable.Walk(scanner, createGraphNode)
-    createGraph(o)
+    c:=new(DotGraphContent)
+    gLookupTable.Walk(scanner, c, createGraphNode)
+    createGraph(o, c)
 }
 
 func main(){
