@@ -5,6 +5,7 @@ import (
 	"fmt"
     //"io"
 	"os"
+    "sync"
     "bytes"
 	"strings"
 	"errors"
@@ -163,7 +164,10 @@ func createGraph(o IOutputWriter, c IContent) {
     o.WriteString("}\n")
 }
 
-func scanSingleFile(file string, o IOutputWriter) {
+func scanSingleFile(file string, o IOutputWriter, wg *sync.WaitGroup) {
+    if wg!=nil {
+        defer wg.Done()
+    }
     //递归扫描指定文件中的头文件包括关系
     scanner:=new(CodeReference)
     scanner.Init(file)
@@ -215,17 +219,19 @@ func main(){
         } else {
             o.name=gargs.output.param
         }
-        scanSingleFile(gargs.file.param, o)
+        scanSingleFile(gargs.file.param, o, nil)
 	} else if gargs.recursive {
         root, _:=filepath.Split(gargs.project.param)
-
+        var wg sync.WaitGroup
+        wg.Add(len(gLookupTable.Files))
         os.Chdir(root)
         for k, _:=range gLookupTable.Files {
             abspath, _:=filepath.Abs(k)
             o:=new(FileWriter)
             o.name=abspath+".dot"
-            scanSingleFile(abspath, o)
+            go scanSingleFile(abspath, o, &wg)
         }
+        wg.Wait()
     } else {
 		log.Fatal("Missing file name to scan.")
 	}
