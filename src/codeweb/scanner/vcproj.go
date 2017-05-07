@@ -10,15 +10,30 @@ import (
 	"strings"
 	"encoding/xml"
 	"io/ioutil"
-	//"bytes"
+	"bytes"
     "sync"
     "os"
     "path/filepath"
+    "code.google.com/p/go-charset/charset"
+    _ "code.google.com/p/go-charset/data"
 )
 
+func removeDuplicateStrings(stringArray *[]string) []string {
+    sort.Strings(*stringArray)
+    duplicate:=""
+    var result []string
+    for i:=0; i<len(*stringArray); i++ {
+        if duplicate!=(*stringArray)[i] {
+            duplicate=(*stringArray)[i]
+            result=append(result, duplicate)
+        }
+    }
+
+    return result
+}
 /*******************************************************************************
 *
-*           XML数据结构 
+*           vcxproj XML数据结构 
 *******************************************************************************/
 type VCXProject struct {
 	ItemDefinitionGroup []ItemDefinitionGroup
@@ -47,7 +62,7 @@ type Include struct {
 	Unmarshal方法无法解析出路径，所以使用原始的方法来解析出路径并存储到
 	结果当中。
 */
-func parseIncludePaths(project *VCXProject) bool {
+func parseXIncludePaths(project *VCXProject) bool {
     result:=false
 	for i:=0; i<len(project.ItemDefinitionGroup); i++ {
 		inputReader:=strings.NewReader(project.ItemDefinitionGroup[i].ClCompile)
@@ -80,20 +95,6 @@ func parseIncludePaths(project *VCXProject) bool {
     return result
 }
 
-func removeDuplicateStrings(stringArray *[]string) []string {
-    sort.Strings(*stringArray)
-    duplicate:=""
-    var result []string
-    for i:=0; i<len(*stringArray); i++ {
-        if duplicate!=(*stringArray)[i] {
-            duplicate=(*stringArray)[i]
-            result=append(result, duplicate)
-        }
-    }
-
-    return result
-}
-
 func absPath(path string, workdir string) (string, error) {
     //re := regexp.MustCompile(`(^|\\|/)\.(\\|/)`)
     //s:=re.ReplaceAllString(path, "/")
@@ -117,7 +118,7 @@ func buildSearchPaths(wg *sync.WaitGroup, paths []ItemDefinitionGroup, workdir s
     gLookupTable.Paths=removeDuplicateStrings(&gLookupTable.Paths)
 }
 
-func buildSearchFiles(wg *sync.WaitGroup, files ItemGroup) {
+func buildXSearchFiles(wg *sync.WaitGroup, files ItemGroup) {
     defer wg.Done()
     gLookupTable.Files = make(map[string]string)
     //分析CPP文件
@@ -142,7 +143,7 @@ func readVCXProject(content []byte, dir string) error {
 		return err
 	}
 
-    hasInclude:=parseIncludePaths(&result)
+    hasInclude:=parseXIncludePaths(&result)
 	//fmt.Printf("item definition: %v\n", result.ItemDefinitionGroup[0].ClCompile)
 	//fmt.Printf("files: %v\n", result)
 
@@ -153,13 +154,94 @@ func readVCXProject(content []byte, dir string) error {
     } else {
         wg.Add(1)
     }
-    go buildSearchFiles(&wg, result.ItemGroup)
+    go buildXSearchFiles(&wg, result.ItemGroup)
     wg.Wait()
     return nil
 }
 
+/*******************************************************************************
+*
+*           vcproj XML数据结构 
+*******************************************************************************/
+type VCProject struct {
+    Configurations []ConfigurationsDefinition
+    Files FilesDefinition
+}
+
+type ConfigurationsDefinition struct {
+    Configuration []ConfigurationDefinition
+}
+
+type ConfigurationDefinition struct {
+    Name string `xml:",attr"`
+    Tool []ToolDefinition
+}
+
+type ToolDefinition struct {
+    IncludeDirectories string `xml:"AdditionalIncludeDirectories,attr"`
+}
+
+type FilesDefinition struct {
+    Filter []FilterDefinition
+}
+
+type FilterDefinition struct {
+    Name string `xml:",attr"`
+    File []FileDefinition
+}
+
+type FileDefinition struct {
+    File string `xml:"RelativePath,attr"`
+}
+
+func parseIncludePaths(project *VCProject) bool {
+    result:=false
+    var paths []string
+    for i:=0; i<len(project.Configurations); i++ {
+        for j:=0; j<len(project.Configurations[i].Configuration); j++ {
+            for k:=0; k<len(project.Configurations[i].Configuration[j].Tool); k++ {
+                include:=project.Configurations[i].Configuration[j].Tool[k].IncludeDirectories
+                if include!="" {
+                    paths=append(paths, include)
+                }
+            }
+        }
+    }
+
+    if paths=removeDuplicateStrings(&paths); len(paths)>0 {
+        gLookupTable.Paths=paths
+        result=true
+    }
+    return result
+}
+
+func buildSearchFiles(files FilesDefinition) {
+    gLookupTable.Files = make(map[string]string)
+    for i:=0; i<len(files.Filter); i++ {
+        for j:=0; j<len(files.Filter[i].File); j++ {
+            //因为在Windows系统中，如果文件名包括路径，那么分隔符一定是\，所以在内部处理时统一换成/。
+            s:=strings.Replace(files.Filter[i].File[j].File, "\\",string(os.PathSeparator), -1)
+            s, _=filepath.Abs(s)
+            //fmt.Println(s)
+            dir, file:=filepath.Split(s)
+            gLookupTable.Files[file]=dir
+        }
+    }
+}
+
 func readVCProject(content []byte, dir string) error {
-    return errors.New("Not supported yet.")
+    var result VCProject
+
+    reader:=bytes.NewReader(content)
+    decoder:=xml.NewDecoder(reader)
+    decoder.CharsetReader=charset.NewReader
+    err:=decoder.Decode(&result)
+    if err!=nil {
+        return err
+    }
+    parseIncludePaths(&result)
+    buildSearchFiles(result.Files)
+    return nil
 }
 
 func buildVCProject(fname string) error {
@@ -173,6 +255,7 @@ func buildVCProject(fname string) error {
         }
     }
 
+    os.Chdir(dir)
 	// 从文件读取，如可以如下：
 	content, err := ioutil.ReadFile(fname)
 	if err!=nil {
