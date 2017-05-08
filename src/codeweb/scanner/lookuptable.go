@@ -106,6 +106,7 @@ func readIncludes(fname string) ([]string, error) {
 **************************************************/
 type LookupTable struct {
     ignoreCase bool
+    cwd string
 	Paths []string
 	Files map[string]string
 }

@@ -104,7 +104,7 @@ func absPath(path string, workdir string) (string, error) {
     return filepath.Abs(path)
 }
 
-func buildSearchPaths(wg *sync.WaitGroup, paths []ItemDefinitionGroup, workdir string) {
+func buildXSearchPaths(wg *sync.WaitGroup, paths []ItemDefinitionGroup, workdir string) {
     defer wg.Done()
     // 改变当前的工作路径以便后面获取绝对路径的函数有效
     os.Chdir(workdir)
@@ -150,7 +150,7 @@ func readVCXProject(content []byte, dir string) error {
     var wg sync.WaitGroup
     if hasInclude {
         wg.Add(2)
-        go buildSearchPaths(&wg, result.ItemDefinitionGroup, dir)
+        go buildXSearchPaths(&wg, result.ItemDefinitionGroup, dir)
     } else {
         wg.Add(1)
     }
@@ -222,7 +222,6 @@ func buildSearchFiles(files FilesDefinition) {
             //因为在Windows系统中，如果文件名包括路径，那么分隔符一定是\，所以在内部处理时统一换成/。
             s:=strings.Replace(files.Filter[i].File[j].File, "\\",string(os.PathSeparator), -1)
             s, _=filepath.Abs(s)
-            //fmt.Println(s)
             dir, file:=filepath.Split(s)
             gLookupTable.Files[file]=dir
         }

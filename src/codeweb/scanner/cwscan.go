@@ -201,6 +201,8 @@ func main(){
 		}
 	}
 
+    gLookupTable.cwd, _=os.Getwd()
+
     if !gargs.project.flag && gargs.project.param=="" {
 		log.Fatal("Need a project name.")
 	}
@@ -210,6 +212,8 @@ func main(){
         log.Fatal("Not specified any output file name.")
     }
 	parseMakefile(gargs.project.param)
+    //转到应用所在的目录，防止在解析工程时更改了路径对后面的搜索的影响
+    os.Chdir(gLookupTable.cwd)
 
 	if gargs.clean {
 		//列出不在工程文件中的文件
