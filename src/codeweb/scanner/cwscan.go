@@ -25,7 +25,8 @@ func printHelp(){
 	fmt.Println("")
 	fmt.Println("cwscan -m <VC project or makefile> -f <file name to scan>")
 	fmt.Println("Create topology of included files of a file.")
-    fmt.Println("cwscan -m <VC project or makefile> -d")
+    fmt.Println("")
+    fmt.Println("cwscan -m <VC project or makefile> -p")
     fmt.Println("Recursively scan all project files.")
 }
 
