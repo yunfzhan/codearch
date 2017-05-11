@@ -92,7 +92,11 @@ func parseMakefile(make string) {
 			log.Fatal(err)
 		}
         ig=true
-	} else {
+	} else if strings.HasSuffix(make, ".pro") {
+        // QT project
+
+    } else {
+        // Makefile
         if err:=buildMakefile(make); err!=nil {
             log.Fatal(err)
         }
